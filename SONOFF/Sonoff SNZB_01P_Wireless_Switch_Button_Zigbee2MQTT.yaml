@@ -1,0 +1,73 @@
+blueprint:
+  name: Sonoff SNZB-01P Wireless Switch Button (Zigbee2MQTT)
+  description: >
+    Reliable button control for SNZB-01P devices with MQTT filtering.
+    Handles single/double/long presses with configurable modes.
+  domain: automation
+  input:
+    mode:
+      name: Automation Modes
+      default: queued
+      selector:
+        select:
+          mode: dropdown
+          options:
+            - single
+            - restart
+            - queued
+            - parallel
+          multiple: false
+          custom_value: false
+          sort: false
+    zigbee_device:
+      name: Zigbee Device - SNZB-01 (and etc)
+      description: Select the correct Zigbee device to use.
+      selector:
+        device:
+          integration: mqtt
+          multiple: true
+    single_press:
+      name: Single Press
+      description: Action to run on single press
+      default: []
+      selector:
+        action: {}
+    double_press:
+      name: Double Press
+      description: Action to run on double press
+      default: []
+      selector:
+        action: {}
+    long_press:
+      name: Long Press
+      description: Action to run on long press (4 seconds)
+      default: []
+      selector:
+        action: {}
+  source_url:
+mode: !input mode
+max_exceeded: silent
+trigger:
+  - platform: mqtt
+    topic: zigbee2mqtt/+/action
+variables:
+  device_names: !input zigbee_device
+  expected_topics:
+    "{% for device_name in device_names %}\n  zigbee2mqtt/{{ device_attr(device_name,
+    'name') }}/action |\n{% endfor %}null\n"
+condition:
+  - condition: template
+    value_template: "{{ trigger.topic in expected_topics }}"
+action:
+  - variables:
+      command: "{{ trigger.payload }}"
+  - choose:
+      - conditions:
+          - "{{ command == 'single' }}"
+        sequence: !input single_press
+      - conditions:
+          - "{{ command == 'double' }}"
+        sequence: !input double_press
+      - conditions:
+          - "{{ command == 'long' or command == 'hold' }}"
+        sequence: !input long_press

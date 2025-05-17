@@ -1,0 +1,68 @@
+blueprint:
+  name: Forced Shopping List Notification Near Supermarket
+  description: >
+    Sends a high-priority notification that opens directly to the shopping list
+    in the mobile app when near a store.
+  domain: automation
+  input:
+    person_entity:
+      name: Person
+      description: The person to track entering the zone.
+      selector:
+        entity:
+          domain: person
+
+    zone_entity:
+      name: Zone
+      description: The zone that triggers the reminder (e.g., supermarket).
+      selector:
+        entity:
+          domain: zone
+
+    shopping_list_entity:
+      name: Shopping List
+      description: The to-do list entity that should have items.
+      selector:
+        entity:
+          domain: todo
+
+    notify_service:
+      name: Notify Service
+      description: Full notify service (e.g., notify.mobile_app_pixel_7_pro)
+      selector:
+        text:
+      default: notify.mobile_app_
+
+    shopping_list_path:
+      name: App Path
+      description: Path to shopping list in app (e.g., `/todo?entity_id=todo.shopping_list`)
+      default: "/todo?entity_id=todo.shopping_list"
+      selector:
+        text:
+
+trigger:
+  - platform: zone
+    entity_id: !input person_entity
+    zone: !input zone_entity
+    event: enter
+
+condition:
+  - condition: numeric_state
+    entity_id: !input shopping_list_entity
+    above: 0
+
+action:
+  - service: !input notify_service
+    data:
+      title: "🛒 Shopping Reminder"
+      message: "You're near the store — check your shopping list!"
+      data:
+        clickAction: !input shopping_list_path # Open the app path directly on tap
+        priority: high
+        ttl: 0
+        channel: alarm_stream # High-priority channel with immediate sound
+        tag: "shopping_alert" # Ensures deduplication
+        vibrationPattern: [300, 1000, 300, 1000, 300] # Optional vibration pattern
+        notification_icon: mdi:cart # Custom notification icon
+
+mode: single
